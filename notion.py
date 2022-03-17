@@ -1,8 +1,9 @@
 import requests
-import os
 import logging
+from utils import response_or_error
 
-class Notion():
+
+class Douban2Notion():
     def __init__(self, token):
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -16,8 +17,8 @@ class Notion():
             body['query'] = page_title
 
         url = self.base_url + '/search'
-        resp = requests.request('POST', url, headers=headers, json=body)
-        return resp.json() # 根据status_code作一些判断
+        resp = requests.request('POST', url, headers=self.headers, json=body)
+        return response_or_error(resp)
 
     def create_page(self, parent_id, title, author):
         '''
@@ -52,7 +53,8 @@ class Notion():
             }
         }
         resp = requests.request('POST', 'https://api.notion.com/v1/pages', json=body, headers=self.headers)
-        return resp.json()
+        return response_or_error(resp)
+
 
     # def update_page_properties(self, page_id, author):
     #     '''
@@ -79,38 +81,104 @@ class Notion():
     #     resp = requests.request('PATCH', url, json=body, headers=self.headers)
     #     return resp.json()
 
-
-    def update_page_content(self, page_id, content):
+    ## add-----------------------------------------
+    def add_block(self, parent_id, children: []):
         '''
-        other than page
+        basic function
+        add: append block children
+        :param parent_id:
+        :param children:
         :return:
         '''
-        url = f'https://api.notion.com/v1/blocks/{page_id}/children'
-        children = {
-            "type": "paragraph",
-            "paragraph": {
-                "rich_text": [{
-                    "type": "text",
-                    "text": {
-                        "content": content,
+        url = self.base_url + f'/blocks/{parent_id}/children'
+        resp = requests.request('PATCH', url, json={'children': children}, headers=self.headers)
+
+        return response_or_error(resp)
+
+
+    def add_image(self, parent_id, img_url):
+        children = [
+            {
+                'type': 'image',
+                'image': {
+                    'type': 'external', # external
+                    'external': {
+                        'url': img_url
                     }
-                }],
+                }
             }
-        }
-        body = {'children': [children]}
-        resp = requests.patch(url, json=body, headers=self.headers)
+        ]
+        resp = self.add_block(parent_id, children)
+        return resp
 
-        if resp.status_code != 200:
-            logging.error(resp.json()['message'])
 
-    def add_block(self, page_id, type):
+    def add_text(self, parent_id, type, text, annotations=None):
+        children = [
+            {
+                "type": type,
+                type: {
+                    "rich_text": [{
+                        "type": "text",
+                        "text": {
+                            "content": text,
+                        },
+                        "annotations": {
+                            "bold": False,
+                            "italic": False,
+                            "underline": False,
+                            "code": False,
+                            "color": "default"
+                        }
+                    }]
+                },
+            }
+        ]
+        if annotations:
+            for k, v in annotations.items():
+                try:
+                    children[0][type]['rich_text'][0]['annotations'][k] = v
+                except Exception as e:
+                    logging.error(str(e)+f"No such key as '{k}' in annotations")
+        resp = self.add_block(parent_id, children)
+        return resp
+
+
+    def add_paragraph(self, parent_id, paragraph):
         '''
-        no value
-        :param page_id:
-        :param type:
+        based on add_text, long paragraph
+        :param parent_id:
+        :param paragraph:
         :return:
         '''
-        url = f'https://api.notion.com/v1/blocks/{page_id}/children'
+        chunk_num = len(paragraph) // 1500 + 1
+        for i in range(chunk_num):
+            chunk = paragraph[1500 * i:1500 * (i + 1)]
+            self.add_text(parent_id, 'paragraph', chunk)
+
+
+    def add_link(self, parent_id, link_text, url):
+        children = [
+            {
+                "type": "paragraph",
+                "paragraph": {
+                    "rich_text": [{
+                        "type": "text",
+                        "text": {
+                            "content": link_text,
+                            "link": {
+                                'type': 'url',
+                                'url': url
+                            }
+                        }
+                    }],
+                }
+            }
+        ]
+        resp = self.add_block(parent_id, children)
+        return resp
+
+
+    def add_simple_block(self, parent_id, type):
         children = [
             {
                 'object': 'block',
@@ -118,11 +186,46 @@ class Notion():
                 type: {}
             }
         ]
-        body = {'children': children}
-        resp = requests.patch(url, json=body, headers=self.headers)
+        resp = self.add_block(parent_id, children)
+        return resp
 
-        if resp.status_code != 200:
-            logging.error(resp.json()['message'])
+
+    ## update-----------------------------------------
+    def update_block(self, block_id, content: dict):
+        '''
+        basic function
+        update: update a block
+        :param block_id:
+        :param content:
+        :return:
+        '''
+        url = self.base_url + f'/blocks/{block_id}'
+        resp = requests.request('PATCH', url, json=content, headers=self.headers)
+        response_or_error(resp)
+
+
+    def update_text(self, block_id, new_text: str):
+        '''
+        based on update_block
+        :param block_id:
+        :param text:
+        :return:
+        '''
+        block = self.get_block(block_id)
+        type = block['type']
+        block[type]["text"][0]["text"]["content"] = new_text
+        resp = self.update_block(block_id, block)
+        response_or_error(resp)
+
+
+    def get_block(self, block_id):
+        pass
+
+
+    def delete_block(self, block_id):
+        url = self.base_url + f'/blocks/{block_id}'
+        resp = requests.request('DELETE', url, headers = self.headers)
+        response_or_error(resp)
 
 
 # body = {
@@ -139,3 +242,16 @@ class Notion():
 #                 }
 #             }
 #         }
+
+# children = {
+#             "type": "paragraph",
+#             "paragraph": {
+#                 "rich_text": [{
+#                     "type": "text",
+#                     "text": {
+#                         "content": content,
+#                     }
+#                 }],
+#             }
+#         }
+# body = {'children': [children]}
