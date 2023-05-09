@@ -3,7 +3,7 @@ from bs4 import BeautifulSoup
 from notion import Douban2Notion
 
 
-token = 'secret_M3m1cee3Zcj5nhw6FXd8z1dis4MenvcqTVYcYq3iT5P'
+token = ''
 n = Douban2Notion(token)
 
 
