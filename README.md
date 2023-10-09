@@ -13,8 +13,18 @@ which applies <em>GitHub Actions</em> to save the posts to github. \
 I have also tried this, but one day it just didn't work for some reason; Also I intend to save the comment (esp. the ones that have most thumb-ups) since some advice is valuable as well.
 
 ## Usage
+There's a very simple Gui interface by `PyQt5` acquiring the input of your target douban page and the ID of the Notion database you want to insert the page into.
+
+You need to have a database with properties `Author` (type: `Text`) and `URL` (type: `URL`) beforehand.
 ![image](https://github.com/wongzingji/douban2Notion/blob/master/images/page.png)
 
+
+> Note that since the Notion API does not yet support uploading files, images or other files still links to urls on the source website. 
+
+
 ## Todo
-- [ ] Make it a Chrome plugin
-- [ ] Extend to diaries
+- [ ] Extract the second page of the comments
+- [ ] Add progress bar to the Gui interface
+- [ ] Automate the creation of necessary database properties
+- [ ] Adjust the format: unnecessarily start a newline in some cases
+- [ ] Extend to diaries, movie lists...

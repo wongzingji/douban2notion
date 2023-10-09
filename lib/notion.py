@@ -1,9 +1,9 @@
 import requests
 import logging
-from utils import response_or_error
+from .utils import response_or_error
 
 
-class Douban2Notion():
+class Notion():
     def __init__(self, token):
         self.headers = {
             "Authorization": "Bearer " + token,
@@ -20,7 +20,7 @@ class Douban2Notion():
         resp = requests.request('POST', url, headers=self.headers, json=body)
         return response_or_error(resp)
 
-    def create_page(self, parent_id, title, author):
+    def create_page(self, parent_id, title, author, page_url):
         '''
         specify the property name & type
         database? block?
@@ -49,6 +49,9 @@ class Douban2Notion():
                             }
                         }
                     ]
+                },
+                'URL': {
+                    'url': page_url
                 }
             }
         }
@@ -82,7 +85,7 @@ class Douban2Notion():
     #     return resp.json()
 
     ## add-----------------------------------------
-    def add_block(self, parent_id, children: []):
+    def add_block(self, parent_id, children):
         '''
         basic function
         add: append block children
@@ -101,7 +104,7 @@ class Douban2Notion():
             {
                 'type': 'image',
                 'image': {
-                    'type': 'external', # external
+                    'type': 'external',
                     'external': {
                         'url': img_url
                     }
@@ -226,32 +229,3 @@ class Douban2Notion():
         url = self.base_url + f'/blocks/{block_id}'
         resp = requests.request('DELETE', url, headers = self.headers)
         response_or_error(resp)
-
-
-# body = {
-#             'properties': {
-#                 'status': {
-#                     'checkbox': True
-#                 },
-#                 'Tags': {
-#                     'type': 'select',
-#                     'select': {
-#                         'name': '喜剧',
-#                         'color': 'blue'
-#                     }
-#                 }
-#             }
-#         }
-
-# children = {
-#             "type": "paragraph",
-#             "paragraph": {
-#                 "rich_text": [{
-#                     "type": "text",
-#                     "text": {
-#                         "content": content,
-#                     }
-#                 }],
-#             }
-#         }
-# body = {'children': [children]}
